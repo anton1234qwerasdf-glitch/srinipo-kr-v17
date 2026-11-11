@@ -1,19 +1,10 @@
-# Dockerfile
-FROM node:latest
+# Base image digest recorded during the original manual build.
+FROM node@sha256:438603bbb5cda404b9416f0b5c8026f61501ab911760d861ec28c36b5d675725
 
-# Создание директории приложения
 WORKDIR /usr/src/app
-
-# Установка зависимостей приложения
-# Используется символ подстановки для копирования обоих файлов package.json и package-lock.json
-COPY package*.json ./
-
-RUN npm install
-
-# Копирование исходного кода приложения
-COPY . .
-
-# Привязка порта, который будет использоваться приложением
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+COPY app.js ./
+COPY test ./test
 EXPOSE 80
-
-CMD [ "node", "app.js" ]
+CMD ["node", "app.js"]

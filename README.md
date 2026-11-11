@@ -2,29 +2,53 @@
 
 Учебный проект: GitHub, Node.js, GitFlow и Linux.
 
-## Исходное приложение
+## Источник и доработка
 
-Пример Node.js/Express из [studybsuir/Dev-course](https://github.com/studybsuir/Dev-course/tree/7b3ad948979b863a7d3cec577e142b4e061c3d83/nodejs), коммит `7b3ad948979b863a7d3cec577e142b4e061c3d83`.
-Исходные `app.js`, `package.json` и `Dockerfile` сохранены без изменений. Приложение возвращает `Hello World!` на `/` и слушает порт 80 внутри контейнера.
+Исходный пример: [studybsuir/Dev-course, каталог nodejs](https://github.com/studybsuir/Dev-course/tree/7b3ad948979b863a7d3cec577e142b4e061c3d83/nodejs).
+Первоначальные app.js, package.json и Dockerfile сохранены в истории коммита `56ab4f01f1dfef13db2ae2058bf544240ac354d5`.
 
-## Среда и ручной запуск
+Версия 1.1.0 заменяет Hello World! страницей с версией приложения и текущим временем сервера (UTC).
+Адрес `/health` возвращает JSON: status, service, version, uptimeSeconds и timestamp.
+Это проверка ответа самого приложения, а не состояния внешних сервисов.
+
+## Среда
 
 Windows → WSL 2 → отдельная Ubuntu 24.04 LTS (SRINIPO) → Docker Engine.
+
+## Сборка, тесты и предпросмотр
+
 Из каталога проекта в Ubuntu:
 
 ```bash
-sudo docker build -t srinipo-app:initial .
-sudo docker run -d --name srinipo-web -p 127.0.0.1:8888:80 srinipo-app:initial
+sudo docker build -t srinipo-app:feature-health-check .
+sudo docker run --rm srinipo-app:feature-health-check npm test
+sudo docker run -d --name srinipo-preview -p 127.0.0.1:8889:80 srinipo-app:feature-health-check
 ```
 
-Открыть http://localhost:8888. Если контейнер уже создан и остановлен: `sudo docker start srinipo-web`.
+Открыть http://localhost:8889 и http://localhost:8889/health.
+Тесты отправляют настоящие HTTP-запросы: проверяют HTML, версию и время сервера, JSON состояния, а также ответ 404.
+Если контейнер предпросмотра уже создан и остановлен: `sudo docker start srinipo-preview`.
 
-## План GitFlow
+Базовый образ Node.js закреплён по digest исходной ручной сборки; зависимости зафиксированы package-lock.json и устанавливаются через npm ci.
+Закреплённые версии следует обновлять отдельно по мере необходимости.
+
+## GitFlow и текущий этап
 
 - `master` — стабильные выпуски.
 - `develop` — интеграция изменений.
-- `feature/*` — отдельные доработки.
+- `feature/health-check` — данная доработка.
 - `release/*` — подготовка выпуска.
 - `hotfix/*` — исправления выпущенной версии при необходимости.
 
-Следующие этапы: модернизация приложения, проверка `/health`, настройка GitHub Actions и собственного Linux runner. Автоматическое развёртывание пока не настроено.
+Доработка проверяется отдельно на порту 8889. Исходный контейнер srinipo-web работает на порту 8888.
+Автоматизация описана ниже; историю запусков и результаты проверок смотрите во вкладке Actions.
+
+## Автоматическое развёртывание
+
+Workflow `.github/workflows/deploy.yml` запускается только при push в `master` этого репозитория, на runner с метками `self-hosted`, `Linux`, `X64`, `srinipo`. События pull_request и pull_request_target не используются. Доступ GITHUB_TOKEN ограничен чтением исходников; checkout не сохраняет учётные данные.
+
+Последовательность: checkout → docker build (тег — SHA коммита) → три HTTP-теста → scripts/deploy.sh → проверка `/health`, версии и ID образа. Задания выполняются последовательно без отмены текущего развёртывания. Перед заменой предыдущий контейнер сохраняется; при неудаче новый удаляется, предыдущий возвращается и проверяется ответ его главной страницы. Успешный выпуск удаляет старый контейнер; Docker-образы остаются доступны. Это обновление с коротким простоем, а не zero-downtime deployment.
+
+В учебном интеграционном тесте на отдельном порту 8890 проверены успешный запуск и восстановление предыдущей версии после намеренно неуспешной проверки `/health`. Итоговый порт приложения — 8888; порт 8889 используется только для предпросмотра.
+
+Runner SRINIPO-WSL устанавливается отдельной службой в учебной Ubuntu и привязывается только к этому репозиторию. Учётные данные runner не размещаются в Git. Он должен быть Online, чтобы выполнять задания; при выключенном компьютере задания не исполняются. История запусков: https://github.com/anton1234qwerasdf-glitch/srinipo-kr-v17/actions

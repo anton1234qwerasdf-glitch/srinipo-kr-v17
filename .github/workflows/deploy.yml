@@ -1,0 +1,58 @@
+name: Build, test and deploy SRINIPO
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srinipo-local-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.repository == 'anton1234qwerasdf-glitch/srinipo-kr-v17' && github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: [self-hosted, Linux, X64, srinipo]
+    timeout-minutes: 15
+    steps:
+      - name: Check out the release
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Check local tools
+        run: |
+          docker version
+          python3 --version
+          curl --version
+
+      - name: Build image
+        env:
+          REVISION: ${{ github.sha }}
+        run: docker build --label "org.opencontainers.image.revision=$REVISION" -t "srinipo-app:$REVISION" .
+
+      - name: Run HTTP tests
+        env:
+          REVISION: ${{ github.sha }}
+        run: docker run --rm "srinipo-app:$REVISION" npm test
+
+      - name: Deploy and verify
+        env:
+          REVISION: ${{ github.sha }}
+        run: |
+          VERSION="$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')"
+          bash scripts/deploy.sh "srinipo-app:$REVISION" "$VERSION"
+
+      - name: Write summary
+        if: success()
+        env:
+          REVISION: ${{ github.sha }}
+        run: |
+          {
+            echo '### SRINIPO deployment verified'
+            echo "Commit: $REVISION"
+            echo 'HTTP endpoint on the runner computer: http://localhost:8888'
+            echo 'Build, HTTP tests and post-deployment health check passed.'
+          } >> "$GITHUB_STEP_SUMMARY"

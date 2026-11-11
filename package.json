@@ -1,13 +1,14 @@
 {
-    "name": "myapp",
-    "version": "1.0.0",
-    "description": "My first Node.js app",
-    "main": "app.js",
-    "scripts": {
-      "start": "node app.js"
-    },
-    "dependencies": {
-      "express": "^4.17.1"
-    }
+  "name": "srinipo-app",
+  "version": "1.1.0",
+  "private": true,
+  "description": "SRINIPO variant 17 coursework web application",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.17.1"
   }
-  
+}
