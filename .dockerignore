@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+.env
+.env.*
+*.log
+coverage
+.secrets
+*.pem
+*.key
+.runner
+.credentials*
